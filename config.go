@@ -35,6 +35,8 @@ type CanonicalConfig struct {
 
 	userConfig     *viper.Viper
 	internalConfig *viper.Viper
+
+	displayTrayTitle bool
 }
 
 const (
@@ -53,6 +55,7 @@ const (
 	configKeyCOMPort             = "com_port"
 	configKeyBaudRate            = "baud_rate"
 	configKeyNoiseReductionLevel = "noise_reduction"
+	configDisplayTrayTitle       = "display_tray_title"
 
 	defaultCOMPort  = "COM4"
 	defaultBaudRate = 9600
@@ -89,6 +92,7 @@ func NewConfig(logger *zap.SugaredLogger, notifier Notifier) (*CanonicalConfig, 
 	userConfig.SetDefault(configKeyInvertSliders, false)
 	userConfig.SetDefault(configKeyCOMPort, defaultCOMPort)
 	userConfig.SetDefault(configKeyBaudRate, defaultBaudRate)
+	userConfig.SetDefault(configDisplayTrayTitle, true)
 
 	internalConfig := viper.New()
 	internalConfig.SetConfigName(internalConfigName)
@@ -238,6 +242,7 @@ func (cc *CanonicalConfig) populateFromVipers() error {
 
 	cc.InvertSliders = cc.userConfig.GetBool(configKeyInvertSliders)
 	cc.NoiseReductionLevel = cc.userConfig.GetString(configKeyNoiseReductionLevel)
+	cc.displayTrayTitle = cc.userConfig.GetBool(configDisplayTrayTitle)
 
 	cc.logger.Debug("Populated config fields from vipers")
 

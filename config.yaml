@@ -24,6 +24,9 @@ invert_sliders: false
 com_port: /dev/ttyUSB0
 baud_rate: 9600
 
+# Display 'deej' next to the tray icon
+displayTrayTitle: true
+
 # adjust the amount of signal noise reduction depending on your hardware quality
 # supported values are "low" (excellent hardware), "default" (regular hardware) or "high" (bad, noisy hardware)
 noise_reduction: default

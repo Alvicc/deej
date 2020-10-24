@@ -14,8 +14,13 @@ func (d *Deej) initializeTray(onDone func()) {
 		logger.Debug("Tray instance ready")
 
 		systray.SetTemplateIcon(icon.DeejLogo, icon.DeejLogo)
-		systray.SetTitle("")
 		systray.SetTooltip("deej")
+
+		if d.config.displayTrayTitle {
+			systray.SetTitle("deej")
+		} else {
+			systray.SetTitle("")
+		}
 
 		editConfig := systray.AddMenuItem("Edit configuration", "Open config file with notepad")
 		editConfig.SetIcon(icon.EditConfig)
