@@ -108,6 +108,7 @@ func (sio *SerialIO) Start() error {
 
 	namedLogger.Infow("Connected", "conn", sio.conn)
 	sio.connected = true
+	sio.sendCommand("<0:Connected =)>")
 
 	// read lines or await a stop
 	go func() {
@@ -304,4 +305,10 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 			}
 		}
 	}
+}
+
+// SendCommand sends serial commands to the mixer
+func (sio *SerialIO) sendCommand(msg string) {
+
+	sio.conn.Write([]byte(msg))
 }

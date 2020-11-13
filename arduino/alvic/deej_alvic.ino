@@ -4,6 +4,11 @@
 #include <Adafruit_SSD1306.h>
 #include <ezButton.h>
 
+// SERIAL COMMAND
+#define CMD_DEBUG  0
+#define CMD_TIME_SYNC  1
+
+
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
@@ -115,6 +120,7 @@ void loop() {
   updateSliderValues();
   sendSliderValues(); // Actually send data (all the time)
   renderToDisplay();
+  
   //printSliderValues(); // For debug
   delay(10);
 }
@@ -252,5 +258,45 @@ void printSliderValues() {
     }
   }
 
+}
 
+// Read serial input
+void serialEvent(){
+
+  // Serial commands start with '<' and end with '>'
+  if ( Serial.find('<') ) {
+    int cmd_type = Serial.readStringUntil(':').toInt();
+    String data = Serial.readStringUntil('>');
+    parseCommand(cmd_type, data);
+  } else {
+    Serial.flush();
+  }
+  
+
+} 
+
+// Parse and dispatch serial commands
+void parseCommand(int cmd_type, String data){
+  
+  switch(cmd_type) {
+    case CMD_DEBUG :
+      printDebug(String(cmd_type) + " => " + data);
+    break;
+    case CMD_TIME_SYNC:
+    // TODO : Set internal time for future clock display
+    break;
+    default:
+      Serial.println("Commande Type unknown : "  + String(cmd_type));
+      Serial.println("Message : "  + String(cmd_type) + " => " + data);
+      break;
+  }
+}
+
+// Print a debug messagr to on the dislay
+void printDebug(String str) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor( 3, 3);
+  display.print("DEBUG : " + str);
+  display.display();
 }
