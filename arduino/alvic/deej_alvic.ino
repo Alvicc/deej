@@ -1,3 +1,5 @@
+#include <RTClib.h>
+
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -74,7 +76,6 @@ struct channel {
 struct channel channels[NUM_SLIDERS];
 
 
-
 void setup() {
   
   Serial.begin(9600);
@@ -106,9 +107,11 @@ void setup() {
     
   display.display();
 
+  //DateTime date = DateTime(1605319321);
+  RTC_Millis::begin(DateTime());
 
   delay(2000); // Shows the splashdcreen for 2 seconds
-  
+  display.clearDisplay();
 }
 
 
@@ -116,7 +119,6 @@ void setup() {
  * Main Loop
  */
 void loop() {
-
   updateSliderValues();
   sendSliderValues(); // Actually send data (all the time)
   renderToDisplay();
@@ -196,14 +198,23 @@ void sendSliderValues() {
 
 
 /**
- * Display
+ * Render on Display
  */
 void renderToDisplay(){
     
   display.clearDisplay();
-  display.setTextSize(1);
+  
+  // Render current time
+  display.setTextSize(2);
+  display.setCursor(1, (SCREEN_HEIGHT/2)-6);
 
+  DateTime now = RTC_Millis::now();
+  String hours = now.hour() < 10 ? "0"+String(now.hour()) : now.hour();
+  String minutes = now.minute() < 10 ? "0" + String( now.minute() ) : now.minute();
+  // String seconds = now.second() < 10 ? "0" + String( now.second() ) : now.second();
+  display.print(hours + ":" + minutes);
 
+  // Render slider bars ans 'muted' indicators 
   for (int i = 0; i < NUM_SLIDERS; i++) {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -211,21 +222,20 @@ void renderToDisplay(){
     float normalized = min(channels[i].averagedValue / MEASURED_MAX_VALUE , 1.0);
     
     int x, y, w, h;
-    x = 45;
+    x = 70;
     y = 30 - (NUM_SLIDERS-i)* 6;
     w = normalized * (127 - x);
     h = 3;
 
     int barLength = 127 - x;
     
-    display.setCursor( 4, y-3 );
+    display.setCursor( x-10, y-3 );
     
     if(channels[i].isMuted){
       display.drawRect(x, y, w, h, SSD1306_WHITE);  
-      display.println("mutted");
+      display.print(">");
     } else {
       display.fillRect(x, y, w, h, SSD1306_WHITE);  
-      display.println(String(int(normalized * 100)));
     }
     
     display.drawLine(x,             y,        x,              y+h-1, SSD1306_WHITE);
@@ -234,6 +244,7 @@ void renderToDisplay(){
     display.drawLine(x+barLength,   y,        x+barLength,    y+h-1, SSD1306_WHITE);
   }
 
+  // Flip to screen
   display.display();
 }
 
@@ -262,7 +273,6 @@ void printSliderValues() {
 
 // Read serial input
 void serialEvent(){
-
   // Serial commands start with '<' and end with '>'
   if ( Serial.find('<') ) {
     int cmd_type = Serial.readStringUntil(':').toInt();
@@ -277,13 +287,15 @@ void serialEvent(){
 
 // Parse and dispatch serial commands
 void parseCommand(int cmd_type, String data){
-  
+
+  printDebug(String(cmd_type) + " => " + data);
   switch(cmd_type) {
     case CMD_DEBUG :
       printDebug(String(cmd_type) + " => " + data);
     break;
     case CMD_TIME_SYNC:
-    // TODO : Set internal time for future clock display
+      long time = data.toInt();
+      setClock(time);
     break;
     default:
       Serial.println("Commande Type unknown : "  + String(cmd_type));
@@ -299,4 +311,9 @@ void printDebug(String str) {
   display.setCursor( 3, 3);
   display.print("DEBUG : " + str);
   display.display();
+}
+
+void setClock(long unix_time){
+  printDebug( "Set clock to : " + String(unix_time) );
+  RTC_Millis::adjust(DateTime(unix_time));
 }
