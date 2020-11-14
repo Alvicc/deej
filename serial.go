@@ -109,12 +109,7 @@ func (sio *SerialIO) Start() error {
 	namedLogger.Infow("Connected", "conn", sio.conn)
 	sio.connected = true
 
-	// Sending current time to the mixer (POC)
-	// I don"t know where to put that yet, it but it will do for now.
-	// Also the timezone is hard coded because i can't be asked right now.
-	now := strconv.FormatInt(time.Now().Unix()+int64(3600), 10)
-	sio.sendCommand("<1:" + now + ">")
-	sio.logger.Debug("Send time sync command : " + now)
+	sio.syncClock()
 
 	// read lines or await a stop
 	go func() {
@@ -317,4 +312,15 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 func (sio *SerialIO) sendCommand(msg string) {
 
 	sio.conn.Write([]byte(msg))
+}
+
+// Sends the current time to the mixer (POC),
+// I don"t know where to put that yet, it but it will do for now.
+// Also the timezone is hard coded because i can't be asked right now.
+func (sio *SerialIO) syncClock() {
+	if sio.connected {
+		now := strconv.FormatInt(time.Now().Unix()+int64(3600), 10)
+		sio.sendCommand("<1:" + now + ">")
+		sio.logger.Debug("Send time sync command : " + now)
+	}
 }

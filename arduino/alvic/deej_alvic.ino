@@ -288,7 +288,7 @@ void serialEvent(){
 // Parse and dispatch serial commands
 void parseCommand(int cmd_type, String data){
 
-  printDebug(String(cmd_type) + " => " + data);
+  //printDebug(String(cmd_type) + " => " + data);
   switch(cmd_type) {
     case CMD_DEBUG :
       printDebug(String(cmd_type) + " => " + data);
