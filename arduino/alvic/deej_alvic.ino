@@ -6,13 +6,18 @@
 #include <Adafruit_SSD1306.h>
 #include <ezButton.h>
 
-// SERIAL COMMAND
+// SERIAL COMMANDS
 #define CMD_DEBUG  0
 #define CMD_TIME_SYNC  1
+#define CMD_VOL_SND  2
+#define CMD_REQ_TIME  3
 
+// Sync internal clock every 15 minutes
+#define TIME_REQUEST_INTERVAL 1000*60*15
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
+#define SPLASH_DELAY 1500  // Splah screen duration in milliseconds
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
@@ -64,6 +69,8 @@ const int ANALOG_IMPUTS[NUM_SLIDERS] = {A0, A1, A2, A3};
 const int DIGITAL_INPUTS[NUM_SLIDERS] = {9, 10, 11, 12};
 const float MEASURED_MAX_VALUE = 1000.0; // My potentionmeters never got me to 1023, so i cheat to be abble to display 100% volume
 
+long lastTimeRequest = 0;
+
 int analogSliderValues[NUM_SLIDERS];
 
 struct channel {
@@ -110,8 +117,9 @@ void setup() {
   //DateTime date = DateTime(1605319321);
   RTC_Millis::begin(DateTime());
 
-  delay(2000); // Shows the splashdcreen for 2 seconds
+  delay(SPLASH_DELAY);
   display.clearDisplay();
+  requestTime();
 }
 
 
@@ -123,7 +131,14 @@ void loop() {
   sendSliderValues(); // Actually send data (all the time)
   renderToDisplay();
   
-  //printSliderValues(); // For debug
+  // Periodically sync internal clock
+  unsigned long now = millis();
+
+  if (now - lastTimeRequest > TIME_REQUEST_INTERVAL) {
+    lastTimeRequest = now;
+    requestTime();
+  }
+
   delay(10);
 }
 
@@ -191,8 +206,8 @@ void sendSliderValues() {
       builtString += String("|");
     }
   }
-  
-  Serial.println(builtString);
+  String formattedCommand = "<" + String(CMD_VOL_SND) + ":" + builtString + ">";
+  Serial.println(formattedCommand);
 }
 
 
@@ -314,6 +329,10 @@ void printDebug(String str) {
 }
 
 void setClock(long unix_time){
-  printDebug( "Set clock to : " + String(unix_time) );
+  // printDebug( "Set clock to : " + String(unix_time) );
   RTC_Millis::adjust(DateTime(unix_time));
+}
+
+void requestTime(){
+  Serial.println("<" + String(CMD_REQ_TIME) + ":" + "nothing" +">");
 }

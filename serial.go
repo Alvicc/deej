@@ -16,6 +16,11 @@ import (
 	"github.com/omriharel/deej/util"
 )
 
+const (
+	cmdUpdateVolume int = 2
+	cmdGetTime      int = 3
+)
+
 // SerialIO provides a deej-aware abstraction layer to managing serial I/O
 type SerialIO struct {
 	comPort  string
@@ -41,7 +46,7 @@ type SliderMoveEvent struct {
 	PercentValue float32
 }
 
-var expectedLinePattern = regexp.MustCompile(`^\d{1,4}(\|\d{1,4})*\r\n$`)
+var expectedLinePattern = regexp.MustCompile(`^\d{1,4}(\|\d{1,4})*$`)
 
 // NewSerialIO creates a SerialIO instance that uses the provided deej
 // instance's connection info to establish communications with the arduino chip
@@ -108,8 +113,6 @@ func (sio *SerialIO) Start() error {
 
 	namedLogger.Infow("Connected", "conn", sio.conn)
 	sio.connected = true
-
-	sio.syncClock()
 
 	// read lines or await a stop
 	go func() {
@@ -228,8 +231,56 @@ func (sio *SerialIO) readLine(logger *zap.SugaredLogger, reader *bufio.Reader) c
 	return ch
 }
 
+// handleLine parses and dispatches commands received from the arduino
 func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 
+	// clean the line
+	sanitizedLine := strings.TrimSuffix(line, "\r\n")
+
+	if !(strings.HasSuffix(sanitizedLine, ">") && strings.HasPrefix(sanitizedLine, "<")) {
+		return
+	}
+
+	sanitizedLine = strings.TrimPrefix(sanitizedLine, "<")
+	sanitizedLine = strings.TrimSuffix(sanitizedLine, ">")
+
+	component := strings.Split(sanitizedLine, ":")
+
+	if cmdID, err := strconv.Atoi(component[0]); err != nil {
+		sio.logger.Warn("Error while parsing command id, cmd : " + sanitizedLine)
+		return
+	} else {
+		cmdData := component[1]
+
+		switch cmdID {
+		case cmdUpdateVolume:
+			sio.UpdateVolume(logger, cmdData)
+		case cmdGetTime:
+			sio.logger.Debug("Received time request")
+			sio.syncClock()
+		}
+	}
+}
+
+// SendCommand sends serial commands to the mixer
+func (sio *SerialIO) sendCommand(msg string) {
+
+	sio.conn.Write([]byte(msg))
+}
+
+// Sends the current time to the mixer (POC),
+// I don"t know where to put that yet, it but it will do for now.
+// Also the timezone is hard coded because i can't be asked right now.
+func (sio *SerialIO) syncClock() {
+	if sio.connected {
+		now := strconv.FormatInt(time.Now().Unix()+int64(3600), 10)
+		sio.sendCommand("<1:" + now + ">")
+		sio.logger.Debug("Send time sync command : " + now)
+	}
+}
+
+// UpdateVolume set the session levels reveived from the arduino
+func (sio *SerialIO) UpdateVolume(logger *zap.SugaredLogger, line string) {
 	// this function receives an unsanitized line which is guaranteed to end with LF,
 	// but most lines will end with CRLF. it may also have garbage instead of
 	// deej-formatted values, so we must check for that! just ignore bad ones
@@ -238,7 +289,7 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 	}
 
 	// trim the suffix
-	line = strings.TrimSuffix(line, "\r\n")
+	// line = strings.TrimSuffix(line, "\r\n")
 
 	// split on pipe (|), this gives a slice of numerical strings between "0" and "1023"
 	splitLine := strings.Split(line, "|")
@@ -305,22 +356,5 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 				consumer <- moveEvent
 			}
 		}
-	}
-}
-
-// SendCommand sends serial commands to the mixer
-func (sio *SerialIO) sendCommand(msg string) {
-
-	sio.conn.Write([]byte(msg))
-}
-
-// Sends the current time to the mixer (POC),
-// I don"t know where to put that yet, it but it will do for now.
-// Also the timezone is hard coded because i can't be asked right now.
-func (sio *SerialIO) syncClock() {
-	if sio.connected {
-		now := strconv.FormatInt(time.Now().Unix()+int64(3600), 10)
-		sio.sendCommand("<1:" + now + ">")
-		sio.logger.Debug("Send time sync command : " + now)
 	}
 }
