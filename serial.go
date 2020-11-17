@@ -237,7 +237,7 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 	// clean the line
 	sanitizedLine := strings.TrimSuffix(line, "\r\n")
 
-	if !(strings.HasSuffix(sanitizedLine, ">") && strings.HasPrefix(sanitizedLine, "<")) {
+	if !(strings.HasPrefix(sanitizedLine, "<") && strings.HasSuffix(sanitizedLine, ">")) {
 		return
 	}
 
@@ -246,19 +246,21 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 
 	component := strings.Split(sanitizedLine, ":")
 
-	if cmdID, err := strconv.Atoi(component[0]); err != nil {
+	cmdID, err := strconv.Atoi(component[0])
+
+	if err != nil {
 		sio.logger.Warn("Error while parsing command id, cmd : " + sanitizedLine)
 		return
-	} else {
-		cmdData := component[1]
+	}
 
-		switch cmdID {
-		case cmdUpdateVolume:
-			sio.UpdateVolume(logger, cmdData)
-		case cmdGetTime:
-			sio.logger.Debug("Received time request")
-			sio.syncClock()
-		}
+	cmdData := component[1]
+
+	switch cmdID {
+	case cmdUpdateVolume:
+		sio.UpdateVolume(logger, cmdData)
+	case cmdGetTime:
+		sio.logger.Debug("Received time request")
+		sio.syncClock()
 	}
 }
 
