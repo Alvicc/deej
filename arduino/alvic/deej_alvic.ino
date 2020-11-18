@@ -66,7 +66,7 @@ const int NUM_SAMPLES = 15;
 const int ANALOG_IMPUTS[NUM_SLIDERS] = {A0, A1, A2, A3};
 const int DIGITAL_INPUTS[NUM_SLIDERS] = {9, 10, 11, 12};
 const float MEASURED_MAX_VALUE = 1000.0; // My potentionmeters never got me to 1023, so i cheat to be abble to display 100% volume
-const unsigned long TIME_REQUEST_INTERVAL = 1000UL*60UL*15UL; // Sync internal clock every 60 seconds
+const unsigned long TIME_REQUEST_INTERVAL = 1000UL*60UL*15UL; // Sync internal clock every 15 minutes
 
 unsigned long lastTimeRequest = 0;
 
@@ -217,14 +217,27 @@ void renderToDisplay(){
   display.clearDisplay();
   
   // Render current time
-  display.setTextSize(2);
-  display.setCursor(1, (SCREEN_HEIGHT/2)-6);
-
+  display.setTextSize(3);
   DateTime now = RTC_Millis::now();
   String hours = now.hour() < 10 ? "0"+String(now.hour()) : now.hour();
   String minutes = now.minute() < 10 ? "0" + String( now.minute() ) : now.minute();
   // String seconds = now.second() < 10 ? "0" + String( now.second() ) : now.second();
-  display.print(hours + ":" + minutes);
+  String timeString = hours + ":" + minutes;
+  
+  int16_t textBoundaryX = 0; 
+  int16_t textBoundaryY = 0; 
+  uint16_t textWidth = 0;
+  uint16_t textHeight = 0;
+
+  display.getTextBounds(timeString, 0, 0, &textBoundaryX, &textBoundaryY, &textWidth, &textHeight);
+  
+  int16_t cx = (SCREEN_WIDTH/2)-(textWidth/2)  + 12;
+  int16_t cy = (SCREEN_HEIGHT/2)-(textHeight/2);
+  // (SCREEN_WIDTH/2)-(textWidth/2)
+  // (SCREEN_HEIGHT/2)-(textHeight/2)
+  display.setCursor(cx, cy);
+  // display.drawRect(cx, cy, textWidth, textHeight, SSD1306_WHITE);
+  display.print(timeString);
 
   // Render slider bars ans 'muted' indicators 
   for (int i = 0; i < NUM_SLIDERS; i++) {
@@ -234,26 +247,22 @@ void renderToDisplay(){
     float normalized = min(channels[i].averagedValue / MEASURED_MAX_VALUE , 1.0);
     
     int x, y, w, h;
-    x = 70;
-    y = 30 - (NUM_SLIDERS-i)* 6;
-    w = normalized * (127 - x);
-    h = 3;
+    h = normalized * SCREEN_HEIGHT;
+    w = 5;
+    x = 0 + (w+1) * i;
+    y = SCREEN_HEIGHT-1-h;
 
-    int barLength = 127 - x;
-    
-    display.setCursor( x-10, y-3 );
-    
     if(channels[i].isMuted){
       display.drawRect(x, y, w, h, SSD1306_WHITE);  
-      display.print(">");
+      // display.print(">");
     } else {
       display.fillRect(x, y, w, h, SSD1306_WHITE);  
     }
     
-    display.drawLine(x,             y,        x,              y+h-1, SSD1306_WHITE);
-    display.drawLine(x,             y-h/2,    x+barLength,    y-h/2, SSD1306_WHITE);
-    display.drawLine(x+barLength/2, y,        x+barLength/2,  y+h-1, SSD1306_WHITE);
-    display.drawLine(x+barLength,   y,        x+barLength,    y+h-1, SSD1306_WHITE);
+    display.drawLine(x,     0,                x+w,    0,                SSD1306_WHITE); // Little bar at the top
+    display.drawLine(x,     SCREEN_HEIGHT/2,  x+w,    SCREEN_HEIGHT/2,  SSD1306_WHITE); // Little bar in the middle
+    display.drawLine(x,     SCREEN_HEIGHT-1,  x+w,    SCREEN_HEIGHT-1,  SSD1306_WHITE); // Little bar at the bottom
+    display.drawLine(x+w/2, 0,                x+w/2,  SCREEN_HEIGHT-1,  SSD1306_WHITE);  // Long ligne
   }
 
   // Flip to screen
