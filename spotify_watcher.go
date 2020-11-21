@@ -19,6 +19,7 @@ type SpotifyWatcher struct {
 	conn         *dbus.Conn
 	playerObject dbus.BusObject // dbus object
 	logger       *zap.SugaredLogger
+	currentSong  SongMetaData
 }
 
 // NewSpotifyWatcher creates and return a MediaWatcher struct
@@ -43,7 +44,7 @@ func NewSpotifyWatcher(logger *zap.SugaredLogger) (*SpotifyWatcher, error) {
 }
 
 // GetSongMetadata returns a populated songMetaData struct
-func (m *SpotifyWatcher) GetSongMetadata() SongMetaData {
+func (m *SpotifyWatcher) getSongMetadata() SongMetaData {
 	data, err := m.playerObject.GetProperty("org.mpris.MediaPlayer2.Player.Metadata")
 
 	if err != nil {
@@ -82,6 +83,11 @@ func (m *SpotifyWatcher) WatchMediaChange(ch chan SongMetaData) error {
 	for {
 		// On signal received, get new metadata and send it through channel
 		<-c
-		ch <- m.GetSongMetadata()
+		song := m.getSongMetadata()
+		// Avoids msg spam from dbus
+		if !(song.title == m.currentSong.title && song.artist == m.currentSong.artist) {
+			m.currentSong = song
+			ch <- m.currentSong
+		}
 	}
 }

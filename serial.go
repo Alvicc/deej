@@ -16,9 +16,11 @@ import (
 	"github.com/omriharel/deej/util"
 )
 
+// Must match command ids on the arduino
 const (
-	cmdUpdateVolume int = 2
-	cmdGetTime      int = 3
+	cmdUpdateVolume      int = 2
+	cmdGetTime           int = 3
+	cmdUpdateCurrentSong int = 4
 )
 
 // SerialIO provides a deej-aware abstraction layer to managing serial I/O
@@ -359,4 +361,20 @@ func (sio *SerialIO) UpdateVolume(logger *zap.SugaredLogger, line string) {
 			}
 		}
 	}
+}
+
+// UpdateCurrentSong sends current song data to arduino
+func (sio *SerialIO) UpdateCurrentSong(logger *zap.SugaredLogger, song SongMetaData) {
+	cmdType := strconv.Itoa(cmdUpdateCurrentSong)
+	data := song.artist + " - " + song.title
+
+	// Cleaner output when play ads
+	if song.title == "Spotify" || song.title == "Advertisement" {
+		data = "Advertisement"
+	}
+
+	cmd := "<" + cmdType + ":" + data + ">"
+	sio.sendCommand(cmd)
+
+	sio.logger.Debug("sending current song to arduino : " + cmd)
 }

@@ -145,12 +145,12 @@ func (d *Deej) setupInterruptHandler() {
 }
 
 func (d *Deej) listenForMusicChange() {
-
 	spotifyCh := make(chan SongMetaData)
 	go d.spotifyWatcher.WatchMediaChange(spotifyCh)
 	for {
 		song := <-spotifyCh
-		d.logger.Info("Spotify song changed : ", song.title, ", by ", song.artist, " from the album ", song.album)
+		d.serial.UpdateCurrentSong(d.logger, song)
+		d.logger.Info("Now playing : ", song.title, ", by ", song.artist, " from the album ", song.album)
 		// TODO : Send data to arduino
 	}
 }
@@ -189,10 +189,8 @@ func (d *Deej) run() {
 		}
 	}()
 
+	// Watch for properties changes from spotify and handle them
 	go d.listenForMusicChange()
-
-	// Probably not the right place to start this,
-	// and i should probably stop it cleanly ?
 
 	// wait until stopped (gracefully)
 	<-d.stopChannel

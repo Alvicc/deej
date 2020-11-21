@@ -6,11 +6,13 @@
 #include <Adafruit_SSD1306.h>
 #include <ezButton.h>
 
-// SERIAL COMMANDS
+// SERIAL COMMAND IDs
+// Must match the command ids in the client (serial.go)
 #define CMD_DEBUG       0
 #define CMD_TIME_SYNC   1
 #define CMD_VOL_SND     2
 #define CMD_REQ_TIME    3
+#define CMD_UPDATE_SONG 4
 
 
 #define SCREEN_WIDTH    128 // OLED display width, in pixels
@@ -82,6 +84,8 @@ struct channel {
 struct channel channels[NUM_SLIDERS];
 
 
+String currentSong;
+
 void setup() {
   
   Serial.begin(9600);
@@ -94,6 +98,7 @@ void setup() {
     channels[i].button = new ezButton(DIGITAL_INPUTS[i]);
   }
 
+  currentSong = "undefined";
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
@@ -217,7 +222,7 @@ void renderToDisplay(){
   display.clearDisplay();
   
   // Render current time
-  display.setTextSize(3);
+  display.setTextSize(2);
   DateTime now = RTC_Millis::now();
   String hours = now.hour() < 10 ? "0"+String(now.hour()) : now.hour();
   String minutes = now.minute() < 10 ? "0" + String( now.minute() ) : now.minute();
@@ -232,12 +237,14 @@ void renderToDisplay(){
   display.getTextBounds(timeString, 0, 0, &textBoundaryX, &textBoundaryY, &textWidth, &textHeight);
   
   int16_t cx = (SCREEN_WIDTH/2)-(textWidth/2)  + 12;
-  int16_t cy = (SCREEN_HEIGHT/2)-(textHeight/2);
-  // (SCREEN_WIDTH/2)-(textWidth/2)
-  // (SCREEN_HEIGHT/2)-(textHeight/2)
+  int16_t cy = (SCREEN_HEIGHT/2)-(textHeight/2) -5;
   display.setCursor(cx, cy);
-  // display.drawRect(cx, cy, textWidth, textHeight, SSD1306_WHITE);
   display.print(timeString);
+
+  // TODO : Scroll Text
+  display.setTextSize(1);
+  display.setCursor(4*(5+1) + 5 , SCREEN_HEIGHT-8);
+  display.print(currentSong);
 
   // Render slider bars ans 'muted' indicators 
   for (int i = 0; i < NUM_SLIDERS; i++) {
@@ -313,11 +320,18 @@ void parseCommand(int cmd_type, String data){
   switch(cmd_type) {
     case CMD_DEBUG :
       printDebug(String(cmd_type) + " => " + data);
-    break;
+      break;
     case CMD_TIME_SYNC:
+    {
       long time = data.toInt();
       setClock(time);
-    break;
+      break;
+    }
+    case CMD_UPDATE_SONG:
+    {
+      currentSong = data;
+      break;
+    }
     default:
       Serial.println("Commande Type unknown : "  + String(cmd_type));
       Serial.println("Message : "  + String(cmd_type) + " => " + data);
