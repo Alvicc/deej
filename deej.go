@@ -20,11 +20,12 @@ const (
 
 // Deej is the main entity managing access to all sub-components
 type Deej struct {
-	logger   *zap.SugaredLogger
-	notifier Notifier
-	config   *CanonicalConfig
-	serial   *SerialIO
-	sessions *sessionMap
+	logger         *zap.SugaredLogger
+	notifier       Notifier
+	config         *CanonicalConfig
+	serial         *SerialIO
+	sessions       *sessionMap
+	spotifyWatcher *SpotifyWatcher
 
 	stopChannel chan bool
 	version     string
@@ -76,6 +77,14 @@ func NewDeej(logger *zap.SugaredLogger, verbose bool) (*Deej, error) {
 	}
 
 	d.sessions = sessions
+
+	spotifyWatcher, err := NewSpotifyWatcher(logger)
+	if err != nil {
+		logger.Errorw("Failed to create spotifyWatcher", "error", err)
+		return nil, fmt.Errorf("create new spotifyWatcher: %w", err)
+	}
+
+	d.spotifyWatcher = spotifyWatcher
 
 	logger.Debug("Created deej instance")
 
@@ -135,6 +144,17 @@ func (d *Deej) setupInterruptHandler() {
 	}()
 }
 
+func (d *Deej) listenForMusicChange() {
+
+	spotifyCh := make(chan SongMetaData)
+	go d.spotifyWatcher.WatchMediaChange(spotifyCh)
+	for {
+		song := <-spotifyCh
+		d.logger.Info("Spotify song changed : ", song.title, ", by ", song.artist, " from the album ", song.album)
+		// TODO : Send data to arduino
+	}
+}
+
 func (d *Deej) run() {
 	d.logger.Info("Run loop starting")
 
@@ -168,6 +188,11 @@ func (d *Deej) run() {
 			}
 		}
 	}()
+
+	go d.listenForMusicChange()
+
+	// Probably not the right place to start this,
+	// and i should probably stop it cleanly ?
 
 	// wait until stopped (gracefully)
 	<-d.stopChannel
