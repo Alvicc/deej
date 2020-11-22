@@ -77,8 +77,8 @@ const int ANALOG_IMPUTS[NUM_SLIDERS] = {A0, A1, A2, A3};
 const int DIGITAL_INPUTS[NUM_SLIDERS] = {9, 10, 11, 12};
 const float MEASURED_MAX_VALUE = 1000.0; // My potentionmeters never got me to 1023, so i cheat to be abble to display 100% volume
 const unsigned long TIME_REQUEST_INTERVAL = 1000UL*60UL*15UL; // Sync internal clock every 15 minutes
-const unsigned long SCROLL_PAUSE = 1000;
-const int SCROLL_TIME_INTERVAL = 250;
+const unsigned long SCROLL_PAUSE = 1000; // Pause for n ms at the start and end of the scrolling animation
+const int SCROLL_TIME_INTERVAL = 250; // Scroll the current song info by n ms
 
 unsigned long lastTimeRequest = 0;
 
@@ -286,14 +286,19 @@ void renderToDisplay(){
   unsigned long elapsed = millis()- scrollTimer;
 
   if ( elapsed >= SCROLL_TIME_INTERVAL && !scrollPaused) {
+    // Reset animation timer
     scrollTimer = millis();
+
+    // Move text by 1 character
     charOffset ++;
-    
+
+    // Pause at the start of scrolling
     if (charOffset == offsetBy-1) {
       scrollPaused = true;
       scrollPause = millis();
     }
 
+    // Pause at the end of scrolling, and reset animation
     if (charOffset >= offsetBy) {
       charOffset = 0;
       scrollPaused = true;
