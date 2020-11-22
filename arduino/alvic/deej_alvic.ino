@@ -17,7 +17,15 @@
 
 #define SCREEN_WIDTH    128 // OLED display width, in pixels
 #define SCREEN_HEIGHT   32 // OLED display height, in pixels
-#define SPLASH_DELAY    1500  // Splah screen duration in milliseconds
+
+#define DEBUG
+
+// Splah screen duration in milliseconds
+#ifdef DEBUG 
+  #define SPLASH_DELAY    0  
+#else
+  #define SPLASH_DELAY    1500  
+#endif
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
@@ -69,10 +77,20 @@ const int ANALOG_IMPUTS[NUM_SLIDERS] = {A0, A1, A2, A3};
 const int DIGITAL_INPUTS[NUM_SLIDERS] = {9, 10, 11, 12};
 const float MEASURED_MAX_VALUE = 1000.0; // My potentionmeters never got me to 1023, so i cheat to be abble to display 100% volume
 const unsigned long TIME_REQUEST_INTERVAL = 1000UL*60UL*15UL; // Sync internal clock every 15 minutes
+const unsigned long SCROLL_PAUSE = 1000;
+const int SCROLL_TIME_INTERVAL = 250;
 
 unsigned long lastTimeRequest = 0;
 
 int analogSliderValues[NUM_SLIDERS];
+
+// SCROLL
+unsigned long scrollTimer = 0;
+bool scrollPaused = false;
+unsigned long scrollPause = 0;
+int charOffset = 0;
+
+String currentSong;
 
 struct channel {
   int analogSliderValues[NUM_SAMPLES]; // Raw values from the potentiometers ( [0] is the most recent )
@@ -84,7 +102,6 @@ struct channel {
 struct channel channels[NUM_SLIDERS];
 
 
-String currentSong;
 
 void setup() {
   
@@ -121,6 +138,8 @@ void setup() {
   //DateTime date = DateTime(1605319321);
   RTC_Millis::begin(DateTime());
 
+  scrollTimer = millis();
+
   delay(SPLASH_DELAY);
   display.clearDisplay();
   requestTime();
@@ -141,7 +160,6 @@ void loop() {
     lastTimeRequest = now;
     requestTime();
   }
-  delay(10);
 }
 
 
@@ -221,7 +239,9 @@ void renderToDisplay(){
     
   display.clearDisplay();
   
-  // Render current time
+  //=================================================================
+  // DISPLAY TIME
+  //=================================================================
   display.setTextSize(2);
   DateTime now = RTC_Millis::now();
   String hours = now.hour() < 10 ? "0"+String(now.hour()) : now.hour();
@@ -241,12 +261,56 @@ void renderToDisplay(){
   display.setCursor(cx, cy);
   display.print(timeString);
 
-  // TODO : Scroll Text
+  
+  //=================================================================
+  // DISPLAY CURRENTLY PLAYING SONG
+  //=================================================================
   display.setTextSize(1);
   display.setCursor(4*(5+1) + 5 , SCREEN_HEIGHT-8);
-  display.print(currentSong);
+  
+  // Figure out by how many character we need to scroll
+  int spaceToEdge = (SCREEN_WIDTH)- display.getCursorX();
+  int charWidth = 7; // 6px per char + 1px of padding
+  int songTextWidth = strlen(currentSong.c_str()) * charWidth;
+  int toScroll = songTextWidth - spaceToEdge;
+  int offsetBy = 0;
+  
+  if (toScroll > 0) {
+    offsetBy = int(toScroll / (charWidth));
+  }
+  
+  // Pause the scrolling for
+  unsigned long pauseElapsed = millis()- scrollPause;
+  if (pauseElapsed >= SCROLL_PAUSE) scrollPaused = false;
+  
+  unsigned long elapsed = millis()- scrollTimer;
 
-  // Render slider bars ans 'muted' indicators 
+  if ( elapsed >= SCROLL_TIME_INTERVAL && !scrollPaused) {
+    scrollTimer = millis();
+    charOffset ++;
+    
+    if (charOffset == offsetBy-1) {
+      scrollPaused = true;
+      scrollPause = millis();
+    }
+
+    if (charOffset >= offsetBy) {
+      charOffset = 0;
+      scrollPaused = true;
+      scrollPause = millis();
+    }
+  }
+
+  // Print the right portion of the current song info
+  for (int i = charOffset ; i < ( strlen(currentSong.c_str()) ) ; i++) {
+    display.print(currentSong[i]);
+  }
+
+
+
+  //=================================================================
+  // DISPLAY VOLUME LEVELS
+  //=================================================================
   for (int i = 0; i < NUM_SLIDERS; i++) {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -271,6 +335,7 @@ void renderToDisplay(){
     display.drawLine(x,     SCREEN_HEIGHT-1,  x+w,    SCREEN_HEIGHT-1,  SSD1306_WHITE); // Little bar at the bottom
     display.drawLine(x+w/2, 0,                x+w/2,  SCREEN_HEIGHT-1,  SSD1306_WHITE);  // Long ligne
   }
+
 
   // Flip to screen
   display.display();
