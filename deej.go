@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 
@@ -150,8 +151,8 @@ func (d *Deej) listenForMusicChange() {
 	for {
 		song := <-spotifyCh
 		d.serial.UpdateCurrentSong(d.logger, song)
-		d.logger.Info("Now playing : ", song.title, ", by ", song.artist, " from the album ", song.album)
-		// TODO : Send data to arduino
+		artistsStr := strings.Join(song.artists, ", ")
+		d.logger.Info("Now playing : ", song.title, ", by ", artistsStr, " from the album ", song.album)
 	}
 }
 

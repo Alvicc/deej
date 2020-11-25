@@ -9,9 +9,9 @@ import (
 
 // SongMetaData store the information about the currently playing song
 type SongMetaData struct {
-	artist string
-	album  string
-	title  string
+	artists []string
+	album   string
+	title   string
 }
 
 // SpotifyWatcher provides infomation about the song currently being played
@@ -52,13 +52,12 @@ func (m *SpotifyWatcher) getSongMetadata() SongMetaData {
 	}
 
 	dataMap := data.Value().(map[string]dbus.Variant)
-
 	// Populate a SongMetaData struct with the data recieived
 	// That looks ugly but i don't know what i'l doing, so yeah.
 	songData := SongMetaData{
-		album:  dataMap["xesam:album"].Value().(string),
-		artist: dataMap["xesam:artist"].Value().([]string)[0],
-		title:  dataMap["xesam:title"].Value().(string),
+		album:   dataMap["xesam:album"].Value().(string),
+		artists: dataMap["xesam:artist"].Value().([]string),
+		title:   dataMap["xesam:title"].Value().(string),
 	}
 
 	return songData
@@ -85,7 +84,7 @@ func (m *SpotifyWatcher) WatchMediaChange(ch chan SongMetaData) error {
 		<-c
 		song := m.getSongMetadata()
 		// Avoids msg spam from dbus
-		if !(song.title == m.currentSong.title && song.artist == m.currentSong.artist) {
+		if !(song.title == m.currentSong.title && song.artists[0] == m.currentSong.artists[0]) {
 			m.currentSong = song
 			ch <- m.currentSong
 		}

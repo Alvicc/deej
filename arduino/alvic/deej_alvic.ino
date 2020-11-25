@@ -18,7 +18,7 @@
 #define SCREEN_WIDTH    128 // OLED display width, in pixels
 #define SCREEN_HEIGHT   32 // OLED display height, in pixels
 
-#define DEBUG
+// #define DEBUG
 
 // Splah screen duration in milliseconds
 #ifdef DEBUG 

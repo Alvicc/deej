@@ -366,7 +366,8 @@ func (sio *SerialIO) UpdateVolume(logger *zap.SugaredLogger, line string) {
 // UpdateCurrentSong sends current song data to arduino
 func (sio *SerialIO) UpdateCurrentSong(logger *zap.SugaredLogger, song SongMetaData) {
 	cmdType := strconv.Itoa(cmdUpdateCurrentSong)
-	data := song.artist + " - " + song.title
+	artistsStr := strings.Join(song.artists, ", ")
+	data := song.title + " - " + artistsStr
 
 	// Cleaner output when play ads
 	if song.title == "Spotify" || song.title == "Advertisement" {
