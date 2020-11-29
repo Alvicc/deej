@@ -267,8 +267,8 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 }
 
 // SendCommand sends serial commands to the mixer
-func (sio *SerialIO) sendCommand(msg string) {
-
+func (sio *SerialIO) sendCommand(cmdType int, data string) {
+	msg := "<" + strconv.Itoa(cmdType) + ":" + data + ">"
 	sio.conn.Write([]byte(msg))
 }
 
@@ -278,7 +278,7 @@ func (sio *SerialIO) sendCommand(msg string) {
 func (sio *SerialIO) syncClock() {
 	if sio.connected {
 		now := strconv.FormatInt(time.Now().Unix()+int64(3600), 10)
-		sio.sendCommand("<1:" + now + ">")
+		sio.sendCommand(1, now)
 		sio.logger.Debug("Send time sync command : " + now)
 	}
 }
@@ -365,17 +365,16 @@ func (sio *SerialIO) UpdateVolume(logger *zap.SugaredLogger, line string) {
 
 // UpdateCurrentSong sends current song data to arduino
 func (sio *SerialIO) UpdateCurrentSong(logger *zap.SugaredLogger, song SongMetaData) {
-	cmdType := strconv.Itoa(cmdUpdateCurrentSong)
 	artistsStr := strings.Join(song.artists, ", ")
 	data := song.title + " - " + artistsStr
 
-	// Cleaner output when play ads
+	// Cleaner output when playing ads
+	// TODO : Mute spotify ?
 	if song.title == "Spotify" || song.title == "Advertisement" {
 		data = "Advertisement"
 	}
 
-	cmd := "<" + cmdType + ":" + data + ">"
-	sio.sendCommand(cmd)
+	sio.sendCommand(cmdUpdateCurrentSong, data)
 
-	sio.logger.Debug("sending current song to arduino : " + cmd)
+	sio.logger.Debug("sending current song to arduino : " + strconv.Itoa(cmdUpdateCurrentSong) + ":" + data)
 }
