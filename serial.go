@@ -370,7 +370,7 @@ func (sio *SerialIO) UpdateCurrentSong(logger *zap.SugaredLogger, song SongMetaD
 
 	// Cleaner output when playing ads
 	// TODO : Mute spotify ?
-	if song.title == "Spotify" || song.title == "Advertisement" {
+	if (song.title == "Spotify" || song.title == "Advertisement") || (song.title == "" && song.album == "") {
 		data = "Advertisement"
 	}
 
