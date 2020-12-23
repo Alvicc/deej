@@ -83,8 +83,8 @@ func (m *SpotifyWatcher) WatchMediaChange(ch chan SongMetaData) error {
 		// On signal received, get new metadata and send it through channel
 		<-c
 		song := m.getSongMetadata()
-		// Avoids msg spam from dbus
-		if !(song.title == m.currentSong.title && song.artists[0] == m.currentSong.artists[0]) {
+
+		if !(song.title == m.currentSong.title) {
 			m.currentSong = song
 			ch <- m.currentSong
 		}
