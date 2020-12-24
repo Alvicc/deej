@@ -21,6 +21,7 @@ const (
 	cmdUpdateVolume      int = 2
 	cmdGetTime           int = 3
 	cmdUpdateCurrentSong int = 4
+	cmdDebugMsg          int = 5
 )
 
 // SerialIO provides a deej-aware abstraction layer to managing serial I/O
@@ -263,6 +264,8 @@ func (sio *SerialIO) handleLine(logger *zap.SugaredLogger, line string) {
 	case cmdGetTime:
 		sio.logger.Debug("Received time request")
 		sio.syncClock()
+	case cmdDebugMsg:
+		sio.logger.Debug(cmdData)
 	}
 }
 
@@ -366,6 +369,9 @@ func (sio *SerialIO) UpdateVolume(logger *zap.SugaredLogger, line string) {
 // UpdateCurrentSong sends current song data to arduino
 func (sio *SerialIO) UpdateCurrentSong(logger *zap.SugaredLogger, song SongMetaData) {
 	artistsStr := strings.Join(song.artists, ", ")
+
+	// If song.title is longer than 72 characters, it wont print on the screen.
+	// ¯\_(ツ)_/¯
 	data := song.title + " - " + artistsStr
 
 	// Cleaner output when playing ads

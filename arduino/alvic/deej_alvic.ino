@@ -13,6 +13,7 @@
 #define CMD_VOL_SND     2
 #define CMD_REQ_TIME    3
 #define CMD_UPDATE_SONG 4
+#define CMD_DEBUG_MSG   5
 
 
 #define SCREEN_WIDTH    128 // OLED display width, in pixels
@@ -227,7 +228,7 @@ void sendSliderValues() {
     }
   }
   String formattedCommand = "<" + String(CMD_VOL_SND) + ":" + builtString + ">";
-  Serial.println(formattedCommand);
+  sendCmd(CMD_VOL_SND, builtString);
 }
 
 
@@ -375,6 +376,9 @@ void serialEvent(){
   if ( Serial.find('<') ) {
     int cmd_type = Serial.readStringUntil(':').toInt();
     String data = Serial.readStringUntil('>');
+    #ifdef DEBUG
+      sendCmd(CMD_DEBUG_MSG, data);
+    #endif
     parseCommand(cmd_type, data);
   } else {
     Serial.flush();
@@ -419,10 +423,13 @@ void printDebug(String str) {
 }
 
 void setClock(long unix_time){
-  // printDebug( "Set clock to : " + String(unix_time) );
   RTC_Millis::adjust(DateTime(unix_time));
 }
 
 void requestTime(){
-  Serial.println("<" + String(CMD_REQ_TIME) + ":" + "nothing" +">");
+  sendCmd(CMD_REQ_TIME, "");
+}
+
+void sendCmd(int cmdID, String data) {
+  Serial.println("<" + String(cmdID) + ":" + data +">");
 }
